@@ -61,6 +61,14 @@ defmodule SocketCAN.Reader do
   def handle_info(:read, state) do
     with {:ok, frame_raw} <- :socket.recv(state.socket, [], state.recv_timeout),
          {:ok, frame} <- SocketCAN.Frame.from_binary(frame_raw, with_timestamp: true) do
+      # send to processes subscribed to all frames
+      Registry.dispatch(state.registry, :all, fn entries ->
+        for {pid, _value} <- entries do
+          send(pid, {:can_frame, frame})
+        end
+      end)
+
+      # send to processes subscribed to this frame id
       Registry.dispatch(state.registry, frame.id, fn entries ->
         for {pid, _value} <- entries do
           send(pid, {:can_frame, frame})
