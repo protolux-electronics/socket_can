@@ -12,8 +12,14 @@ defmodule SocketCAN.WriterTest do
     } end, name: :mock_socket_state)
     
     on_exit(fn -> 
-      if Process.whereis(:mock_socket_state) do
-        Agent.stop(:mock_socket_state)
+      if pid = Process.whereis(:mock_socket_state) do
+        if Process.alive?(pid) do
+          try do
+            Agent.stop(:mock_socket_state, :normal, 100)
+          catch
+            :exit, _ -> :ok
+          end
+        end
       end
     end)
     
